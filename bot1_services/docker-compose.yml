@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  bot1_web:
+    image: nginx
+    container_name: bot1_web
+    ports:
+      - "8081:80"  # Expose port 80 of the container to port 8081 on the host
+    networks:
+      - ctf_network1
+    volumes:
+      - ./html:/usr/share/nginx/html  # Each bot has its own website files
+
+networks:
+  ctf_network1:
+    external: true
+

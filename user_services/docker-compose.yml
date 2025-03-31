@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  user_web:
+    image: nginx
+    container_name: user_web
+    ports:
+      - "8080:80"  # Expose port 80 of the container to port 8080 on the host
+    networks:
+      - ctf_network2
+    volumes:
+      - ./html:/usr/share/nginx/html  # Each bot has its own website files
+
+networks:
+  ctf_network2:
+    external: true
+

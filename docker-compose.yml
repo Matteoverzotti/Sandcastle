@@ -1,0 +1,54 @@
+version: "3.9"
+
+networks:
+  ctf_network1:
+    name: ctf_network1
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.100.0/24
+  ctf_network2:
+    name: ctf_network2
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.101.0/24
+
+services:
+
+  # 🖥️ User's Bot (Runs Its Own Services)
+  user_host:
+    image: my_linux_bot
+    container_name: user_host
+    networks:
+      ctf_network1:
+        ipv4_address: 192.168.100.100
+      ctf_network2:
+        ipv4_address: 192.168.101.100
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:Z  # Allows bot to run Docker inside itself
+      - ./user_services:/services:Z  # Local service folders
+    user: root
+    privileged: true
+    tty: true
+    stdin_open: true
+    command: ["/bin/bash", "-c", "docker-compose up -d && tail -f /dev/null"]
+
+  # 🖥️ Bot 1 (Runs Its Own Services)
+  bot1_host:
+    image: my_linux_bot
+    container_name: bot1_host
+    networks:
+      ctf_network1:
+        ipv4_address: 192.168.100.10
+      ctf_network2:
+        ipv4_address: 192.168.101.10
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:Z  # Allows bot to run Docker inside itself
+      - ./bot1_services:/services:Z  # Bot's service folders
+    user: root
+    privileged: true
+    tty: true
+    stdin_open: true
+    command: ["/bin/bash", "-c", "docker-compose up -d && tail -f /dev/null"]
+
