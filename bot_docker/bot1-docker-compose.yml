@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  bot1_app1:
+    image: vulnerable_web
+    container_name: bot1_app1
+    networks:
+      bot1_app1_net:
+        ipv4_address: 192.168.101.1
+    ports:
+      - "8082:80"
+    volumes:
+      - ./bot1_app1/html:/var/www/html:z
+
+networks:
+  bot1_app1_net:
+    external: true
