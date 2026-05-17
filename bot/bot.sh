@@ -110,13 +110,13 @@ is_own_service_running() {
 }
 
 restart_own_service() {
-    local service_dir="/home/team${MY_TEAM}/service"
+    local service_dir="/home/team${MY_TEAM}/example-vuln"
     if [[ ! -d "$service_dir" ]]; then
         log_err "Service dir $service_dir not found"
         return 1
     fi
     log_info "Running docker compose up for team${MY_TEAM}-vuln …"
-    docker compose -f "${service_dir}/sandcastle-compose.yml" up -d --build
+    docker compose -f "${service_dir}/docker-compose.yml" up -d --build
     log_ok "Service (re)started"
 }
 

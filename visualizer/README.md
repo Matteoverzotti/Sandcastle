@@ -14,6 +14,18 @@ The app loads the repository root `docker-compose.yml` by default. Use
 `Yaml Mode` to paste or upload another Compose file, then render it into the
 diagram.
 
+## Bot Mode
+
+Bot Mode talks to the local Sandcastle bot bridge:
+
+```bash
+python3 bot/bot_api.py
+```
+
+From there you can create a bot profile, choose actions and a planner, then
+deploy that bot into selected team SSH containers. Deployed bots act on behalf
+of their team from inside the CTF network.
+
 ## Data Model
 
 The parser normalizes Compose metadata into React Flow nodes and edges:

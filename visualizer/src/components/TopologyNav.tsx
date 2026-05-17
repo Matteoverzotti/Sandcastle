@@ -5,6 +5,7 @@ const MODES: Array<{ id: Mode; label: string }> = [
   { id: 'yaml', label: 'Yaml Mode' },
   { id: 'inspector', label: 'Inspector' },
   { id: 'firewall', label: 'Firewall' },
+  { id: 'bot', label: 'Bot' },
 ];
 
 type TopologyNavProps = {

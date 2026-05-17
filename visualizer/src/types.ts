@@ -1,6 +1,52 @@
 import type { Edge, Node } from 'reactflow';
 
-export type Mode = 'editor' | 'yaml' | 'inspector' | 'firewall';
+export type Mode = 'editor' | 'yaml' | 'inspector' | 'firewall' | 'bot';
+
+export type BotTargetPolicy = 'all_opponents' | 'selected';
+
+export interface BotConfig {
+  botName: string;
+  planner: string;
+  targetPolicy: BotTargetPolicy;
+  targetTeams: number[];
+  loopInterval: number;
+  numTeams: number;
+  servicePort: number;
+  flagRe: string;
+  ipPattern: string;
+  actions: string[];
+  stopOnSuccess: boolean;
+  timeout: number;
+}
+
+export const DEFAULT_BOT_CONFIG: BotConfig = {
+  botName: 'Sweep Bot',
+  planner: 'scripted',
+  targetPolicy: 'all_opponents',
+  targetTeams: [],
+  loopInterval: 60,
+  numTeams: 4,
+  servicePort: 8080,
+  flagRe: 'FLAG\\{[a-f0-9]{32}\\}',
+  ipPattern: '10.10.{team}.3',
+  actions: ['recon.health'],
+  stopOnSuccess: true,
+  timeout: 6,
+};
+
+export interface BotActionOption {
+  id: string;
+  label: string;
+  category: string;
+  scope: 'target' | 'self' | string;
+  description: string;
+}
+
+export interface BotPlannerOption {
+  id: string;
+  label: string;
+  description: string;
+}
 
 export type EventType = 'ssh' | 'icmp' | 'http' | 'tcp' | 'udp' | 'dns' | 'ftp' | 'mysql' | 'postgres' | 'redis' | 'smtp' | 'telnet';
 
