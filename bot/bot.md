@@ -1,90 +1,102 @@
 # Sandcastle Bot
 
-Three files. `deploy.sh` runs on the host; `bot.py` and `bot.sh` run inside a team's SSH container.
+The bot is a deployable team actor. You create a bot profile, choose its
+actions, then deploy it into one or more `teamN-ssh` containers. Once running,
+it acts as that team and targets the other teams from inside the CTF network.
 
-| File | Where | Role |
-|------|-------|------|
-| `deploy.sh` | Host | Copy bot files into containers, start/stop/status/logs |
-| `bot.py` | `teamN-ssh` container | Python attack loops, watchdog |
-| `bot.sh` | `teamN-ssh` container | Bash attacks, interactive menu |
+## Pieces
 
-The bot auto-detects its own team from the container hostname (`team2-ssh` → team 2) and attacks every other team's vuln service on `10.10.N.3:8080`.
+| Path | Where | Role |
+|---|---|---|
+| `deploy.sh` | Host | Copies bot files into team SSH containers and starts/stops them |
+| `bot_api.py` | Host | Local HTTP bridge used by the visualizer Bot tab |
+| `bot.py` | `teamN-ssh` | Runtime loop: loads config, asks a planner for tasks, runs actions |
+| `bot_lib/actions.py` | `teamN-ssh` | Action registry: recon, exploits, probes, maintenance |
+| `bot_lib/planners.py` | `teamN-ssh` | Planner registry and external planner hook |
+| `bot.sh` | `teamN-ssh` | Older interactive shell helper |
 
----
+The Python runtime is deliberately pluggable: actions are small classes with a
+stable `run(ctx, target_team)` method, and planners produce ordered
+`BotTask(target_team, action_id)` items. A future AI agent can slot in as a
+planner without changing deploy or the visualizer flow.
 
-## Quickstart
+## Visualizer Flow
+
+Start the platform, then start the local bot bridge:
 
 ```bash
-# From repo root — start the platform
 ./scripts/start.sh
+python3 bot/bot_api.py
+```
 
-# Deploy bots to teams 2, 3, 4 (team 1 stays human)
-cd bot/
+In the visualizer, open `Bot`:
+
+1. Create a bot profile.
+2. Pick a planner and actions.
+3. Choose opponent policy.
+4. Select the team containers where the bot should run.
+5. Deploy.
+
+The bridge listens on `http://localhost:7878` and only shells out to
+`bot/deploy.sh`.
+
+## CLI Quickstart
+
+```bash
+# Deploy the default recon-only bot profile to teams 2, 3, and 4.
+cd bot
 ./deploy.sh 2 3 4
 
-# Check they are running
-./deploy.sh --status
+# Explicit recon-only bot.
+./deploy.sh --actions recon.health --planner recon_first 2
 
-# Watch live attack output for team 2
+# Attack bot with the example exploit chain.
+./deploy.sh --actions recon.health,exploit.path_traversal,exploit.cmdi,exploit.sqli 2
+
+# Deploy against selected target teams only.
+./deploy.sh --target-policy selected --target-teams 1,3 2
+
+# Check state and logs.
+./deploy.sh --status
 ./deploy.sh --logs 2
 ```
 
----
-
-## deploy.sh
-
-```bash
-./deploy.sh 2 3 4          # copy + start bot in those containers
-./deploy.sh --copy-only 2  # copy files only, don't start
-./deploy.sh --stop 2       # kill the bot in team2-ssh
-./deploy.sh --status       # running/stopped for all teams
-./deploy.sh --logs 2       # tail /tmp/bot.log from team2-ssh
-```
-
-**Env overrides:**
+Useful environment overrides:
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `NUM_TEAMS` | `4` | Total teams |
-| `LOOP_INTERVAL` | `60` | Seconds between attack rounds |
-| `WATCHDOG` | `true` | Restart own vuln service if it goes down |
+|---|---:|---|
+| `NUM_TEAMS` | `4` | Total teams visible to the bot |
+| `LOOP_INTERVAL` | `60` | Seconds between rounds |
+| `WATCHDOG` | `false` | Run the maintenance watchdog before each round |
+
+## Built-In Actions
+
+| Action ID | Category | Purpose |
+|---|---|---|
+| `recon.health` | Recon | Check `/health` |
+| `exploit.path_traversal` | Exploit | Read `../flag.txt` through `/export` |
+| `exploit.cmdi` | Exploit | Inject `cat /app/data/flag.txt` through diagnostics |
+| `exploit.sqli` | Exploit | Bypass login and read admin notes |
+| `probe.plant_endpoint` | Probe | Probe `/internal/plant` with a bad token |
+| `maintain.watchdog` | Maintenance | Restart own vuln machine if Docker access is available |
+
+See the machine-readable catalog:
 
 ```bash
-LOOP_INTERVAL=30 WATCHDOG=false ./deploy.sh 2 3 4
+python3 bot/bot.py --catalog
 ```
 
----
+## External Planner Contract
 
-## One-off actions (from host)
+Set `planner` to `module:object` in the JSON config or pass
+`--planner module:object`. The imported object can be a class instance or a
+class with:
 
-```bash
-# Ping sweep — see which vuln containers are reachable
-docker exec team2-ssh python3 /tmp/bot.py --ping --teams 4
-
-# Attack a single team right now
-docker exec team2-ssh python3 /tmp/bot.py --attack-team 3
-
-# Probe a team's flag-plant endpoint
-docker exec team2-ssh python3 /tmp/bot.py --fake-flag 3
+```python
+def plan(ctx, override_target=None):
+    yield BotTask(target_team=2, action_id="recon.health")
+    yield BotTask(target_team=2, action_id="exploit.path_traversal")
 ```
 
----
-
-## Attack sequence
-
-Each target is tried in order; stops at the first captured flag:
-
-1. **Path traversal** — `GET /export?file=../flag.txt`
-2. **Command injection** — `POST /admin/diagnostics` with `host=127.0.0.1; cat /app/data/flag.txt`
-3. **SQL injection** — `POST /login` with `username=admin' --`, then read `/notes`
-
----
-
-## Network layout
-
-```
-10.10.N.2  →  teamN-ssh   SSH container (host port 220N)
-10.10.N.3  →  teamN-vuln  Flask app, port 8080 (internal only)
-```
-
-Human teams: `ssh -p 220N teamN@localhost` (password: `teamNpass`)
+The `ctx` object exposes team identity, service URL helpers, HTTP helpers, and
+the loaded bot config.

@@ -34,6 +34,7 @@ iterations.
 │   └── cleanup.sh              # remove all Sandcastle Docker resources
 ├── services/
 │   └── example-vuln/           # vulnerable service template
+├── bot/                        # pluggable team bot runtime + visualizer bridge
 ├── teams/
 │   └── generated/              # ignored per-team app workspaces
 ├── visualizer/                 # React Flow Docker architecture visualizer
@@ -172,6 +173,18 @@ npm run dev
 
 It loads the repository root `docker-compose.yml` by default and includes a
 YAML mode for pasted or uploaded Compose files.
+
+The visualizer also has a Bot mode. Start the local bridge from the repository
+root before using it:
+
+```bash
+python3 bot/bot_api.py
+```
+
+Bot profiles are deployed into `team<N>-ssh` containers and act from that
+team's network identity. The runtime uses a pluggable action registry and
+planner interface so scripted behavior can later be replaced by an AI planner.
+See `bot/bot.md` for the bot contract and CLI.
 
 ## Future Vulnerable App Contract
 
